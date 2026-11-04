@@ -65,6 +65,12 @@
     width: 44px; height: 44px; flex-shrink: 0; border: none; border-radius: 50%;
     background: #00c896; color: #0A0F14; font-size: 20px; font-weight: bold; cursor: pointer;
   }
+  /* Desktop: the 480px phone card looks lost on a wide screen, so widen + center it. */
+  @media (min-width: 768px) {
+    body { padding: 24px; }
+    .phone { max-width: 760px; min-height: calc(100dvh - 48px); padding: 18px; }
+    .msg { font-size: 16px; }
+  }
 </style>
 </head>
 <body>
