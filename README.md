@@ -31,6 +31,13 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 - **Staff role-এর ID:** Server Settings → Roles → role-এ right-click → Copy ID (Discord-এ Developer Mode on থাকতে হবে) → `.env`-এ `STAFF_ROLE_ID`-এ বসাও। Role-এর "Allow anyone to mention this role" on রাখো, নইলে mention ping যাবে না (অথবা bot-কে Mention Everyone permission দাও)।
 - **On/off (শুধু staff):** `@Haven off` → bot চুপ হয়ে যাবে, staff নিজে reply দেবে। `@Haven on` → bot আবার on। Off/on state memory-তে থাকে — bot restart হলে আবার ON হয়ে যাবে।
 
+## Model chain (invisible)
+
+- ৩টা model এই order-এ try হয়: 120b → 20b → qwen।
+- Switch হয় শুধু 429 (limit শেষ) হলে — অন্য error-এ না, আর উত্তর না জানলে (DON'T_KNOW) না, কারণ brain একই।
+- Chat-এ switch-এর কিছু বোঝা যাবে না — model-এর নাম, limit-এর কথা কোথাও আসবে না।
+- ৩টাই শেষ হলে user-এর ভাষায় busy message যাবে (Discord-এ staff mention হবে না, mention শুধু উত্তর না জানলে)।
+
 ## Brain edit করা
 
 - শুধু `brain.js` edit করো — HTML test আর Discord bot দুইজনেই ওটা ব্যবহার করে।
@@ -47,4 +54,3 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 - প্রতিটি rank-এর perks-এর তালিকা (`brain.js` → `ranks[].perks`)
 - সার্ভারের নিয়মের তালিকা (`brain.js` → `rules`)
 - Cracked / TLauncher policy
-- Model fallback chain (120b → 20b → qwen) — approval pending, পরে `bot.js`-এ যোগ হবে।

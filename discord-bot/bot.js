@@ -13,9 +13,9 @@
 
 require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
-const { BRAIN, buildSystemPrompt, FALLBACK, detectLanguage } = require("../brain.js");
+const { BRAIN, buildSystemPrompt, FALLBACK, BUSY, detectLanguage } = require("../brain.js");
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen3.8-27b"]; // try order — switching is invisible in chat
 const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID || ""; // staff role ID of the test server (set in .env)
 const COOLDOWN_MS = 15 * 1000; // at least 15 seconds between two messages from the same user
 const MENTION_COOLDOWN_MS = 5 * 60 * 1000; // at least 5 minutes between staff mentions in the same channel (anti-spam)
@@ -82,28 +82,41 @@ client.on("messageCreate", async (message) => {
     if (now - last < COOLDOWN_MS) return; // silently ignore within cooldown
     lastMsgAt.set(message.author.id, now);
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + process.env.GROQ_API_KEY,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: buildSystemPrompt() },
-          { role: "user", content: question },
-        ],
-        temperature: 0.3,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("Groq error:", res.status, data.error && data.error.message);
-      await message.reply("Can't answer right now, please try again later.");
+    // Try models in order. Switch ONLY on 429 (limit ended) — never on other errors,
+    // and never on DON'T_KNOW (same brain, another model won't know either).
+    // Nothing about switching is shown in the chat.
+    let raw = null;
+    let allRateLimited = false;
+    for (let i = 0; i < MODELS.length; i++) {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + process.env.GROQ_API_KEY,
+        },
+        body: JSON.stringify({
+          model: MODELS[i],
+          messages: [
+            { role: "system", content: buildSystemPrompt() },
+            { role: "user", content: question },
+          ],
+          temperature: 0.3,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) { raw = (data.choices[0].message.content || "").trim(); break; }
+      if (res.status !== 429) break;
+      if (i === MODELS.length - 1) allRateLimited = true;
+      console.log(`Model ${MODELS[i]} rate-limited, trying next model.`);
+    }
+    if (raw === null) {
+      if (allRateLimited) {
+        await message.reply(BUSY[detectLanguage(question)]);
+      } else {
+        await message.reply("Can't answer right now, please try again later.");
+      }
       return;
     }
-    const raw = (data.choices[0].message.content || "").trim();
 
     // --- AI doesn't know → graceful message + staff mention ---
     if (raw === "DON'T_KNOW") {

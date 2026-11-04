@@ -144,6 +144,13 @@
     en: "I don't have information on that. Please ask our staff on Discord or use the website's Contact form — they'll help. I can answer about ranks, shop, joining, or commands.",
   };
 
+  // Message shown when all models are busy (in the user's language).
+  // No model names, no limit words — visitors only see a busy note.
+  const BUSY = {
+    bn: "এখন অনেকেই প্রশ্ন করছে, একটু পরে আবার try করো। জরুরি হলে Discord-এ staff-দের জিজ্ঞেস করো।",
+    en: "Lots of people are asking questions right now, please try again in a bit. For urgent help, ask our staff on Discord.",
+  };
+
   // Returns 'bn' if the text contains Bangla characters, otherwise 'en'.
   function detectLanguage(text) {
     return /[\u0980-\u09FF]/.test(text) ? "bn" : "en";
@@ -152,8 +159,9 @@
   root.BRAIN = BRAIN;
   root.buildSystemPrompt = buildSystemPrompt;
   root.FALLBACK = FALLBACK;
+  root.BUSY = BUSY;
   root.detectLanguage = detectLanguage;
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { BRAIN, buildSystemPrompt, FALLBACK, detectLanguage };
+    module.exports = { BRAIN, buildSystemPrompt, FALLBACK, BUSY, detectLanguage };
   }
 })(typeof window !== "undefined" ? window : globalThis);
