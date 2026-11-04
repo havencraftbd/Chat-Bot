@@ -5,7 +5,7 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 ## Files
 
 - `brain.js` — **bot-এর জ্ঞান। শুধু এই file-ই edit করবে।** Section: system prompt, server info, ranks, rank কেনার নিয়ম, player commands, shop, rules, support।
-- `chat-test.html` — Browser test। `brain.js` + `config.js` load করে — chat UI-তে key/model-এর কোনো option নেই, visitor-রা Groq/test-এর কিছু দেখবে না।
+- `index.html` — Browser test, এটাই home page। `brain.js` + `config.js` load করে — chat UI-তে key/model-এর কোনো option নেই, visitor-রা Groq/test-এর কিছু দেখবে না।
 - `config.example.js` — config-এর template (key খালি)। এটা repo-তে থাকে।
 - `discord-bot/bot.js` — Discord test bot। `brain.js` load করে, mention-এ reply দেয়।
 - `discord-bot/package.json`, `discord-bot/.env.example` — bot চালানোর জন্য।
@@ -20,7 +20,7 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 ## HTML test কীভাবে
 
 1. `config.example.js`-এর copy `config.js` নামে রাখো, তাতে key বসাও (তোমার নিজের copy-তে)।
-2. `chat-test.html` double-click করে browser-এ খোলো (পাশে `brain.js` থাকতে হবে)।
+2. `index.html` double-click করে browser-এ খোলো (পাশে `brain.js` + `config.js` থাকতে হবে)।
 3. নিজে প্রশ্ন লিখে test করো — "নিয়ম কী?" দিয়ে জানি না test-ও করো।
 
 ## Discord bot কীভাবে (laptop-এ, temp test)

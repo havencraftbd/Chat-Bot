@@ -1,11 +1,176 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=chat-test.html">
-<title>HavenCraft Chatbot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HavenCraft Chat</title>
+<script src="brain.js"></script>
+<script src="config.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, sans-serif;
+    background: #0A0F14; color: #EADCC8; min-height: 100dvh;
+    display: flex; justify-content: center; padding: 12px;
+    overflow-x: hidden;
+  }
+  .blob { position: fixed; border-radius: 50%; filter: blur(70px); z-index: 0; pointer-events: none; }
+  .blob.teal { width: 320px; height: 320px; background: rgba(0, 200, 150, 0.25); top: -80px; left: -60px; }
+  .blob.orange { width: 260px; height: 260px; background: rgba(255, 138, 0, 0.16); bottom: -60px; right: -40px; }
+  .phone {
+    position: relative; z-index: 1; width: 100%; max-width: 480px;
+    background: rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 28px; padding: 14px;
+    display: flex; flex-direction: column; min-height: calc(100dvh - 24px);
+  }
+  .header { display: flex; align-items: center; gap: 10px; padding: 6px 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #00c896, #0F3D3E);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; color: #fff;
+  }
+  .name { font-size: 17px; font-weight: 600; }
+  .status { font-size: 12px; color: #7FB3B8; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00c896; margin-right: 4px; }
+  #chat { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 14px 4px; overflow-y: auto; }
+  .msg {
+    max-width: 82%; padding: 10px 14px; line-height: 1.5; font-size: 15px;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .msg.user {
+    align-self: flex-end; background: linear-gradient(135deg, #00c896, #00a87e); color: #fff;
+    border-radius: 20px 20px 4px 20px;
+  }
+  .msg.bot {
+    align-self: flex-start; background: rgba(255, 255, 255, 0.12);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.10); color: #EADCC8;
+    border-radius: 20px 20px 20px 4px;
+  }
+  .msg.err { align-self: flex-start; background: rgba(255, 107, 107, 0.15); color: #ff9d9d; border-radius: 20px 20px 20px 4px; }
+  .msg a { color: #9ADFFF; text-decoration: underline; }
+  .msg.user a { color: #fff; }
+  .inputbar { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
+  #q {
+    flex: 1; padding: 12px 16px; border-radius: 24px; font-size: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.16); outline: none;
+    background: rgba(255, 255, 255, 0.10); color: #EADCC8;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  #q::placeholder { color: #7FB3B8; }
+  #send {
+    width: 44px; height: 44px; flex-shrink: 0; border: none; border-radius: 50%;
+    background: #00c896; color: #0A0F14; font-size: 20px; font-weight: bold; cursor: pointer;
+  }
+</style>
 </head>
 <body>
-<p><a href="chat-test.html">Chat test খুলছে… না খুললে এখানে click করো।</a></p>
+<div class="blob teal"></div>
+<div class="blob orange"></div>
+<div class="phone">
+  <div class="header">
+    <div class="avatar">H</div>
+    <div>
+      <div class="name">Haven</div>
+      <div class="status"><span class="dot"></span>online · HavenCraft</div>
+    </div>
+  </div>
+
+  <div id="chat"></div>
+
+  <div class="inputbar">
+    <input id="q" placeholder="Message..." autocomplete="off">
+    <button id="send" aria-label="Send">↑</button>
+  </div>
+</div>
+
+<script>
+  const chatEl = document.getElementById("chat");
+  const qEl = document.getElementById("q");
+  const GENERIC_ERR = "Can't answer right now, please try again later.";
+  // Key + model chain come from config.js (local-only file, never pushed).
+  // If config.js is missing, KEY stays empty and the chat shows the generic error.
+  const KEY = (typeof API_KEY !== "undefined") ? API_KEY : "";
+  const MODEL_LIST = (typeof MODELS !== "undefined" && MODELS.length) ? MODELS : ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen3.8-27b"];
+
+  // Escape HTML first, then turn bare https:// URLs into clickable links.
+  function renderText(text) {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    return escaped.replace(/https?:\/\/[^\s<]+/g, (url) => {
+      const trail = url.match(/[.,;:!?)]+$/);
+      const clean = trail ? url.slice(0, -trail[0].length) : url;
+      const tail = trail ? trail[0] : "";
+      return `<a href="${clean}" target="_blank" rel="noopener">${clean}</a>${tail}`;
+    });
+  }
+
+  function addMsg(text, cls) {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.innerHTML = renderText(text);
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return d;
+  }
+
+  async function ask(question) {
+    if (!KEY) { addMsg(GENERIC_ERR, "err"); return; }
+    addMsg(question, "user");
+    const thinking = addMsg("Haven is thinking…", "bot");
+    try {
+      // Try models in order. Switch ONLY on 429 (limit ended) — never on other errors,
+      // and never when the answer is DON'T_KNOW (same brain, another model won't know either).
+      // Nothing about switching is shown in the chat.
+      let answer = null;
+      let allRateLimited = false;
+      for (let i = 0; i < MODEL_LIST.length; i++) {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + KEY },
+          body: JSON.stringify({
+            model: MODEL_LIST[i],
+            messages: [
+              { role: "system", content: buildSystemPrompt() },
+              { role: "user", content: question },
+            ],
+            temperature: 0.3,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) { answer = (data.choices[0].message.content || "").trim(); break; }
+        if (res.status !== 429) break;
+        if (i === MODEL_LIST.length - 1) allRateLimited = true;
+      }
+      thinking.remove();
+      if (answer === null) {
+        addMsg(allRateLimited ? BUSY[detectLanguage(question)] : GENERIC_ERR, allRateLimited ? "bot" : "err");
+        return;
+      }
+      if (answer === "DON'T_KNOW") {
+        addMsg(FALLBACK[detectLanguage(question)], "bot");
+      } else {
+        addMsg(answer, "bot");
+      }
+    } catch (e) {
+      thinking.remove();
+      addMsg(GENERIC_ERR, "err");
+    }
+  }
+
+  document.getElementById("send").addEventListener("click", () => {
+    const v = qEl.value.trim();
+    if (!v) return;
+    qEl.value = "";
+    ask(v);
+  });
+  qEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("send").click(); });
+</script>
 </body>
 </html>
