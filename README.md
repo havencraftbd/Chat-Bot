@@ -13,7 +13,7 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 
 1. `chat-test.html`-এর উপরে CONFIG section-এ `API_KEY`-এ key বসাও (তোমার নিজের copy-তে)।
 2. `chat-test.html` double-click করে browser-এ খোলো (পাশে `brain.js` থাকতে হবে)।
-3. Chip-এর প্রশ্নগুলো দিয়ে test করো — "নিয়ম কী?" দিয়ে জানি না test-ও করো।
+3. নিজে প্রশ্ন লিখে test করো — "নিয়ম কী?" দিয়ে জানি না test-ও করো।
 
 ## Discord bot কীভাবে (laptop-এ, temp test)
 

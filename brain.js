@@ -1,11 +1,11 @@
-// HavenCraft chatbot brain — bot-এর জ্ঞান শুধু এই file-এ থাকে।
-// Staff শুধু এই file edit করবে। chat-test.html আর discord-bot/bot.js এই file থেকেই
-// জ্ঞান নেয় — তাই এক জায়গায় edit করলে দুই জায়গায়ই update হয়।
-// নিয়ম: brain-এ যা নেই, bot তা নিয়ে বানিয়ে বলবে না — "জানি না" বলবে।
+// HavenCraft chatbot brain — all of the bot's knowledge lives in this file only.
+// Staff edit only this file. chat-test.html and discord-bot/bot.js both take their
+// knowledge from here — so one edit updates both places.
+// Rule: whatever is not in the brain, the bot must not invent — it says it doesn't know.
 //
-// Juel-এর পূরণ করার বাকি (TBD):
-// - ranks[].perks — প্রতিটি rank-এর সুবিধার তালিকা
-// - rules — সার্ভারের নিয়মের তালিকা
+// Remaining for Juel to fill (TBD):
+// - ranks[].perks — perk list for each rank
+// - rules — server rules list
 // - cracked / TLauncher policy
 
 (function (root) {
@@ -49,29 +49,29 @@
       "There is no in-game command that buys a rank.",
     ].join(" "),
 
-    // Rank-এর সাথে কোনো আলাদা in-game command থাকলে এখানে যোগ হবে (এখনো TBD)।
+    // Add rank-specific in-game commands here if any exist (currently TBD).
     rankCommands: [],
 
     playerCommands: [
-      { command: "/register", description: "Server-এ account register করা" },
-      { command: "/tpa", description: "অন্য player-এর কাছে teleport request পাঠানো" },
-      { command: "/sethome", description: "Home set করা" },
-      { command: "/shop", description: "In-game shop খোলা" },
-      { command: "/sell", description: "Item বিক্রি করা" },
+      { command: "/register", description: "Register an account on the server" },
+      { command: "/tpa", description: "Send a teleport request to another player" },
+      { command: "/sethome", description: "Set a home" },
+      { command: "/shop", description: "Open the in-game shop" },
+      { command: "/sell", description: "Sell items" },
       { command: "/ah", description: "Auction house" },
-      { command: "/shards", description: "Shard balance দেখা" },
-      { command: "/claim", description: "জমি claim করা (grief protection)" },
-      { command: "/trust", description: "Claim-এ কাউকে trust দেওয়া" },
-      { command: "/warp pvp", description: "PvP arena-তে যাওয়া" },
-      { command: "/crates", description: "Crate খোলা" },
-      { command: "/spawn", description: "Spawn-এ ফেরা" },
-      { command: "/leaderboard", description: "Leaderboard দেখা" },
-      { command: "/stats", description: "নিজের stats দেখা" },
-      { command: "/settings", description: "নিজের setting বদলানো" },
+      { command: "/shards", description: "Check shard balance" },
+      { command: "/claim", description: "Claim land (grief protection)" },
+      { command: "/trust", description: "Trust someone in your claim" },
+      { command: "/warp pvp", description: "Go to the PvP arena" },
+      { command: "/crates", description: "Open crates" },
+      { command: "/spawn", description: "Return to spawn" },
+      { command: "/leaderboard", description: "View the leaderboard" },
+      { command: "/stats", description: "View your own stats" },
+      { command: "/settings", description: "Change your own settings" },
     ],
 
     shop: {
-      note: "Shop থেকে কেনা যায় website store (havencraft.pro/store) থেকে, bKash/Nagad manual payment-এ।",
+      note: "Buy from the website store (havencraft.pro/store) with manual bKash/Nagad payment.",
       spawners: [
         { type: "Basic", price: "৳25", items: "Pig, Sheep, Chicken, Cow" },
         { type: "Combat", price: "৳35" },
@@ -80,17 +80,17 @@
       ],
     },
 
-    // সার্ভারের নিয়মের তালিকা এখনো যোগ করা হয়নি — যোগ হলে bot নিয়ম নিয়ে উত্তর দিতে পারবে।
+    // Server rules list not added yet — once added, the bot can answer rules questions.
     rules: [],
 
     support: [
-      "Help লাগলে website-এর Contact form-এ জানাও, অথবা Discord server-এ staff-দের জানাও।",
-      "Rank কেনা / payment সমস্যা হলে Admin-রা দেখে, সাধারণ সাহায্য / report-এর জন্য Mod-রা দেখে।",
+      "For help, use the website's Contact form or ask staff on the Discord server.",
+      "Admins handle rank purchases / payment issues; Mods handle general help / reports.",
     ].join(" "),
   };
 
-  // Brain-এর section-গুলো থেকে একটাই system prompt বানায়।
-  // HTML test আর Discord bot — দুইজনেই এই function ব্যবহার করে, তাই prompt সবসময় একরকম থাকে।
+  // Builds one system prompt from the brain's sections.
+  // The HTML test and the Discord bot both use this function, so the prompt is always identical.
   function buildSystemPrompt() {
     const lines = [BRAIN.systemPrompt, "", "## BRAIN DATA (answer only from this)", ""];
 
@@ -137,14 +137,14 @@
     return lines.join("\n");
   }
 
-  // Don't-know হলে bot/HTML যে graceful message দেখাবে (user-এর ভাষায়)।
-  // Staff mention-টা brain-এ না — bot.js-এ হয়, কারণ mention Discord-এর ব্যাপার।
+  // Message shown when the bot doesn't know (in the user's language).
+  // The staff mention is not here — it happens in bot.js, because mentions are a Discord matter.
   const FALLBACK = {
     bn: "এই বিষয়ে আমার কাছে তথ্য নেই। Discord-এ staff-দের জিজ্ঞেস করো, অথবা website-এর Contact form-এ জানাও — তারা সাহায্য করবে। তবে rank, shop, join বা command নিয়ে জিজ্ঞেস করলে আমি উত্তর দিতে পারবো।",
     en: "I don't have information on that. Please ask our staff on Discord or use the website's Contact form — they'll help. I can answer about ranks, shop, joining, or commands.",
   };
 
-  // প্রশ্নে বাংলা অক্ষর থাকলে 'bn', নইলে 'en'।
+  // Returns 'bn' if the text contains Bangla characters, otherwise 'en'.
   function detectLanguage(text) {
     return /[\u0980-\u09FF]/.test(text) ? "bn" : "en";
   }

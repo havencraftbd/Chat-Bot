@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HavenCraft Chat</title>
 <script src="brain.js"></script>
 <script>
-  // ===== CONFIG — key এখানে বসাও। এই option chat-এ দেখা যাবে না। =====
-  const API_KEY = ""; // ← key এখানে বসাও
+  // ===== CONFIG — put your key here. This option is not shown in the chat. =====
+  const API_KEY = ""; // ← put your key here
   const API_MODEL = "openai/gpt-oss-120b";
 </script>
 <style>
@@ -55,12 +55,6 @@
     border-radius: 20px 20px 20px 4px;
   }
   .msg.err { align-self: flex-start; background: rgba(255, 107, 107, 0.15); color: #ff9d9d; border-radius: 20px 20px 20px 4px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px 10px; }
-  .chip {
-    background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px; padding: 7px 13px; font-size: 13px; cursor: pointer;
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  }
   .inputbar { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
   #q {
     flex: 1; padding: 12px 16px; border-radius: 24px; font-size: 15px;
@@ -98,7 +92,7 @@
 <script>
   const chatEl = document.getElementById("chat");
   const qEl = document.getElementById("q");
-  const GENERIC_ERR = "এখন উত্তর দিতে পারছি না, একটু পরে আবার try করো।";
+  const GENERIC_ERR = "Can't answer right now, please try again later.";
 
   function addMsg(text, cls) {
     const d = document.createElement("div");
@@ -112,7 +106,7 @@
   async function ask(question) {
     if (!API_KEY) { addMsg(GENERIC_ERR, "err"); return; }
     addMsg(question, "user");
-    const thinking = addMsg("Haven ভাবছে…", "bot");
+    const thinking = addMsg("Haven is thinking…", "bot");
     try {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -148,7 +142,6 @@
     ask(v);
   });
   qEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("send").click(); });
-  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => ask(c.dataset.q)));
 </script>
 </body>
 </html>

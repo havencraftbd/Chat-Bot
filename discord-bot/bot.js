@@ -1,23 +1,24 @@
 // HavenCraft chatbot — Discord test bot.
-// Brain: ../brain.js (একটাই brain — HTML test আর এই bot দুইজনেই ওটা ব্যবহার করে)।
-// চালানো: npm install → .env বানাও (.env.example দেখো) → node bot.js
+// Brain: ../brain.js (one brain — the HTML test and this bot both use it).
+// Run: npm install → create .env (see .env.example) → node bot.js
 //
-// আচরণ:
-// - Bot শুধু তখনই reply দেয় যখন কেউ তাকে mention করে — তাই test server-এ spam হবে না।
-// - Model উত্তর না জানলে DON'T_KNOW signal দেয় → bot graceful message পাঠায় +
-//   staff role-কে mention করে (প্রশ্নসহ, যাতে staff বোঝে কী জানতে চাওয়া হয়েছিল)।
-// - Staff `@Haven off` / `@Haven on` দিয়ে bot off/on করতে পারে (শুধু staff role / Admin)।
-//   Off থাকলে bot চুপ থাকে, শুধু `on` command শোনে। Off/on state memory-তে থাকে —
-//   bot restart হলে আবার ON হয়ে যাবে (test-এর জন্য এটাই ঠিক)।
+// Behavior:
+// - The bot only replies when someone mentions it — so no spam on the test server.
+// - When the model doesn't know an answer, it sends a DON'T_KNOW signal → the bot sends
+//   a graceful message + mentions the staff role (with the question quoted, so staff
+//   understand what was asked).
+// - Staff can turn the bot off/on with `@Haven off` / `@Haven on` (staff role / Admin only).
+//   While off, the bot stays silent and only listens for the `on` command. The off/on state
+//   lives in memory — a bot restart turns it back ON (fine for testing).
 
 require("dotenv").config();
 const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
 const { BRAIN, buildSystemPrompt, FALLBACK, detectLanguage } = require("../brain.js");
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
-const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID || ""; // test server-এর staff role-এর ID (.env-এ বসাও)
-const COOLDOWN_MS = 15 * 1000; // একই user-এর দুই message-এর মাঝে কমপক্ষে 15 সেকেন্ড
-const MENTION_COOLDOWN_MS = 5 * 60 * 1000; // একই channel-এ staff mention-এর মাঝে কমপক্ষে 5 মিনিট (spam ঠেকাতে)
+const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID || ""; // staff role ID of the test server (set in .env)
+const COOLDOWN_MS = 15 * 1000; // at least 15 seconds between two messages from the same user
+const MENTION_COOLDOWN_MS = 5 * 60 * 1000; // at least 5 minutes between staff mentions in the same channel (anti-spam)
 
 const lastMsgAt = new Map();
 const lastMentionAt = new Map();
@@ -31,7 +32,7 @@ const client = new Client({
   ],
 });
 
-// Staff কিনা: STAFF_ROLE_ID থাকলে ওই role, নইলে Administrator permission।
+// Staff check: the STAFF_ROLE_ID role if set, otherwise Administrator permission.
 function isStaff(member) {
   if (!member) return false;
   if (STAFF_ROLE_ID && member.roles.cache.has(STAFF_ROLE_ID)) return true;
@@ -40,45 +41,45 @@ function isStaff(member) {
 
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag} | brain version: ${BRAIN.version}`);
-  if (!STAFF_ROLE_ID) console.log("WARNING: STAFF_ROLE_ID বসানো নেই — fallback-এ staff mention হবে না।");
+  if (!STAFF_ROLE_ID) console.log("WARNING: STAFF_ROLE_ID is not set — no staff mention on fallback.");
 });
 
 client.on("messageCreate", async (message) => {
   try {
-    if (message.author.bot) return; // অন্য bot-এর message ignore
-    if (!message.guild) return; // DM-এ reply না
-    if (!message.mentions.has(client.user)) return; // শুধু mention-এ reply
+    if (message.author.bot) return; // ignore other bots' messages
+    if (!message.guild) return; // no replies in DMs
+    if (!message.mentions.has(client.user)) return; // only reply on mention
 
     const question = message.content.replace(/<@!?\d+>/g, "").trim();
     const lower = question.toLowerCase();
 
-    // --- On/off toggle (শুধু staff) ---
+    // --- On/off toggle (staff only) ---
     if (lower === "off" || lower === "on") {
       if (!isStaff(message.member)) {
-        await message.reply("শুধু staff-রা bot off/on করতে পারে।");
+        await message.reply("Only staff can turn the bot off/on.");
         return;
       }
       if (lower === "off") {
         botEnabled = false;
-        await message.reply("Bot off করা হয়েছে — এখন থেকে staff reply দেবে। আবার on করতে `@Haven on` লিখো।");
+        await message.reply("Bot turned off — staff will reply from now on. To turn it back on, type `@Haven on`.");
       } else {
         botEnabled = true;
-        await message.reply("Bot আবার on।");
+        await message.reply("Bot is back on.");
       }
       return;
     }
 
-    if (!botEnabled) return; // off থাকলে চুপচাপ ignore (শুধু `on` শোনে, ওটা উপরে handle হয়েছে)
+    if (!botEnabled) return; // while off, silently ignore (only `on` is listened to, handled above)
     if (!question) {
       await message.reply(
-        "আমাকে mention করে প্রশ্ন করো — server join, rank, shop, command নিয়ে। যেমন: `@Haven Java IP কী?`"
+        "Mention me and ask your question — about server join, ranks, shop, or commands. For example: `@Haven What is the Java IP?`"
       );
       return;
     }
 
     const now = Date.now();
     const last = lastMsgAt.get(message.author.id) || 0;
-    if (now - last < COOLDOWN_MS) return; // cooldown-এর মধ্যে থাকলে চুপচাপ ignore
+    if (now - last < COOLDOWN_MS) return; // silently ignore within cooldown
     lastMsgAt.set(message.author.id, now);
 
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -99,22 +100,22 @@ client.on("messageCreate", async (message) => {
     const data = await res.json();
     if (!res.ok) {
       console.error("Groq error:", res.status, data.error && data.error.message);
-      await message.reply("এখন উত্তর দিতে পারছি না, একটু পরে আবার try করো।");
+      await message.reply("Can't answer right now, please try again later.");
       return;
     }
     const raw = (data.choices[0].message.content || "").trim();
 
-    // --- AI পারে না → graceful message + staff mention ---
+    // --- AI doesn't know → graceful message + staff mention ---
     if (raw === "DON'T_KNOW") {
       let reply = FALLBACK[detectLanguage(question)];
       const lastMention = lastMentionAt.get(message.channel.id) || 0;
       if (STAFF_ROLE_ID && now - lastMention >= MENTION_COOLDOWN_MS) {
         lastMentionAt.set(message.channel.id, now);
-        reply += `\n\n<@&${STAFF_ROLE_ID}> একজন visitor-এর প্রশ্নের উত্তর আমার কাছে নেই: "${question}" — দয়া করে দেখুন।`;
+        reply += `\n\n<@&${STAFF_ROLE_ID}> I don't have an answer for a visitor's question: "${question}" — please take a look.`;
       } else if (STAFF_ROLE_ID) {
-        reply += `\n\n(Staff-দের আগেই জানানো হয়েছে — 5 মিনিটের মধ্যে আবার mention হবে না।)`;
+        reply += `\n\n(Staff have already been notified — no mention again within 5 minutes.)`;
       } else {
-        console.log("DON'T_KNOW (mention skipped, STAFF_ROLE_ID নেই):", question);
+        console.log("DON'T_KNOW (mention skipped, STAFF_ROLE_ID not set):", question);
       }
       await message.reply(reply);
       return;
@@ -126,17 +127,17 @@ client.on("messageCreate", async (message) => {
   } catch (err) {
     console.error("Bot error:", err);
     try {
-      await message.reply("একটা সমস্যা হয়েছে, একটু পরে আবার try করো।");
+      await message.reply("Something went wrong, please try again later.");
     } catch (_) {}
   }
 });
 
 if (!process.env.DISCORD_TOKEN) {
-  console.error("DISCORD_TOKEN নেই — .env file-এ বসাও (.env.example দেখো)।");
+  console.error("DISCORD_TOKEN is missing — set it in the .env file (see .env.example).");
   process.exit(1);
 }
 if (!process.env.GROQ_API_KEY) {
-  console.error("GROQ_API_KEY নেই — .env file-এ বসাও (.env.example দেখো)।");
+  console.error("GROQ_API_KEY is missing — set it in the .env file (see .env.example).");
   process.exit(1);
 }
 client.login(process.env.DISCORD_TOKEN);
