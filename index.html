@@ -134,6 +134,14 @@
     return d;
   }
 
+  // Input grows downward as you type (max ~120px), no visible scrollbar,
+  // touch-scrollable inside when longer.
+  function autoResize() {
+    qEl.style.height = "auto";
+    qEl.style.height = Math.min(qEl.scrollHeight, 120) + "px";
+  }
+  qEl.addEventListener("input", autoResize);
+
   async function ask(question) {
     if (!KEY) { addMsg(GENERIC_ERR, "err"); return; }
     addMsg(question, "user");
