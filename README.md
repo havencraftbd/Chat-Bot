@@ -5,14 +5,14 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 ## Files
 
 - `brain.js` — **bot-এর জ্ঞান। শুধু এই file-ই edit করবে।** Section: system prompt, server info, ranks, rank কেনার নিয়ম, player commands, shop, rules, support।
-- `chat-test.html` — Browser test। `brain.js` load করে, Groq key browser-এ বসিয়ে test করা যায়।
+- `chat-test.html` — Browser test। `brain.js` load করে; key file-এর উপরে CONFIG-এ বসাতে হয় — chat UI-তে key/model-এর কোনো option নেই, visitor-রা Groq/test-এর কিছু দেখবে না।
 - `discord-bot/bot.js` — Discord test bot। `brain.js` load করে, mention-এ reply দেয়।
 - `discord-bot/package.json`, `discord-bot/.env.example` — bot চালানোর জন্য।
 
 ## HTML test কীভাবে
 
-1. `chat-test.html` double-click করে browser-এ খোলো।
-2. Groq API Key বসাও (শুধু তোমার browser-এ থাকবে, file-এ না)।
+1. `chat-test.html`-এর উপরে CONFIG section-এ `API_KEY`-এ key বসাও (তোমার নিজের copy-তে)।
+2. `chat-test.html` double-click করে browser-এ খোলো (পাশে `brain.js` থাকতে হবে)।
 3. Chip-এর প্রশ্নগুলো দিয়ে test করো — "নিয়ম কী?" দিয়ে জানি না test-ও করো।
 
 ## Discord bot কীভাবে (laptop-এ, temp test)
@@ -38,7 +38,8 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 
 ## Key নিয়ম
 
-- আসল key কখনো repo-তে commit করো না — key শুধু নিজের `.env` / browser-এ।
+- Key `chat-test.html`-এর উপরে CONFIG-এ (`API_KEY`) বসাও — তোমার নিজের copy-তে। Repo-তে push করার version-এ CONFIG খালি রাখো (public Pages-এর source-এ key দেখা যাবে)।
+- Discord bot-এর key শুধু নিজের `.env`-এ।
 - Test key test-এর পরে বদলে দিলেই হলো।
 
 ## এখনো বাকি (Juel পূরণ করবে)
