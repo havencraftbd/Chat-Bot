@@ -5,13 +5,21 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 ## Files
 
 - `brain.js` — **bot-এর জ্ঞান। শুধু এই file-ই edit করবে।** Section: system prompt, server info, ranks, rank কেনার নিয়ম, player commands, shop, rules, support।
-- `chat-test.html` — Browser test। `brain.js` load করে; key file-এর উপরে CONFIG-এ বসাতে হয় — chat UI-তে key/model-এর কোনো option নেই, visitor-রা Groq/test-এর কিছু দেখবে না।
+- `chat-test.html` — Browser test। `brain.js` + `config.js` load করে — chat UI-তে key/model-এর কোনো option নেই, visitor-রা Groq/test-এর কিছু দেখবে না।
+- `config.example.js` — config-এর template (key খালি)। এটা repo-তে থাকে।
 - `discord-bot/bot.js` — Discord test bot। `brain.js` load করে, mention-এ reply দেয়।
 - `discord-bot/package.json`, `discord-bot/.env.example` — bot চালানোর জন্য।
 
+## Config (config.js)
+
+- `config.example.js` হলো template — এটা repo-তে থাকে, key খালি।
+- `config.example.js`-এর copy বানিয়ে `config.js` নামে রাখো, তাতে key বসাও।
+- `config.js` কখনো repo-তে push করো না — আমার push-এও `config.js` থাকে না, তাই তোমার বসানো key মুছবে না।
+- `config.js` না থাকলে chat generic error দেখাবে, crash করবে না।
+
 ## HTML test কীভাবে
 
-1. `chat-test.html`-এর উপরে CONFIG section-এ `API_KEY`-এ key বসাও (তোমার নিজের copy-তে)।
+1. `config.example.js`-এর copy `config.js` নামে রাখো, তাতে key বসাও (তোমার নিজের copy-তে)।
 2. `chat-test.html` double-click করে browser-এ খোলো (পাশে `brain.js` থাকতে হবে)।
 3. নিজে প্রশ্ন লিখে test করো — "নিয়ম কী?" দিয়ে জানি না test-ও করো।
 
@@ -45,7 +53,7 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
 
 ## Key নিয়ম
 
-- Key `chat-test.html`-এর উপরে CONFIG-এ (`API_KEY`) বসাও — তোমার নিজের copy-তে। Repo-তে push করার version-এ CONFIG খালি রাখো (public Pages-এর source-এ key দেখা যাবে)।
+- Key `config.js`-এ বসাও — তোমার নিজের copy-তে, কখনো repo-তে না। Repo-তে শুধু `config.example.js` (খালি template) থাকে।
 - Discord bot-এর key শুধু নিজের `.env`-এ।
 - Test key test-এর পরে বদলে দিলেই হলো।
 
