@@ -33,7 +33,6 @@
       version: "1.21+ (Paper 26.2)",
       java: "mc.havencraft.pro:2566",
       bedrock: [
-        "havencraft.wdn.gg (Bedrock 26.40+, no port, no trust prompt)",
         "mc.havencraft.pro:2025 (Bedrock 26.40+, first-time trust prompt)",
       ],
       website: "havencraft.pro",
@@ -43,9 +42,9 @@
     },
 
     ranks: [
-      { name: "Prime", price: "৳199", perks: "TBD" },
-      { name: "Legend", price: "৳299", perks: "TBD" },
-      { name: "Elite", price: "৳399", note: "Most Popular", perks: "TBD" },
+      { name: "Prime", price: "৳220", perks: "TBD" },
+      { name: "Legend", price: "৳340", perks: "TBD" },
+      { name: "Elite", price: "৳420", note: "Most Popular", perks: "TBD" },
     ],
 
     rankBuyInfo: [
