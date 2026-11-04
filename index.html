@@ -10,9 +10,9 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; font-family: system-ui, -apple-system, sans-serif;
-    background: #0A0F14; color: #EADCC8; min-height: 100dvh;
+    background: #0A0F14; color: #EADCC8; height: 100dvh;
     display: flex; justify-content: center; padding: 12px;
-    overflow-x: hidden;
+    overflow: hidden;
   }
   .blob { position: fixed; border-radius: 50%; filter: blur(70px); z-index: 0; pointer-events: none; }
   .blob.teal { width: 320px; height: 320px; background: rgba(0, 200, 150, 0.25); top: -80px; left: -60px; }
@@ -23,9 +23,9 @@
     -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 28px; padding: 14px;
-    display: flex; flex-direction: column; min-height: calc(100dvh - 24px);
+    display: flex; flex-direction: column; height: calc(100dvh - 24px);
   }
-  .header { display: flex; align-items: center; gap: 10px; padding: 6px 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+  .header { display: flex; align-items: center; gap: 10px; padding: 6px 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); flex-shrink: 0; }
   .avatar {
     width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
     background: linear-gradient(135deg, #00c896, #0F3D3E);
@@ -35,7 +35,7 @@
   .name { font-size: 17px; font-weight: 600; }
   .status { font-size: 12px; color: #7FB3B8; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00c896; margin-right: 4px; }
-  #chat { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 14px 4px; overflow-y: auto; }
+  #chat { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 14px 4px; overflow-y: auto; scroll-behavior: smooth; }
   .msg {
     max-width: 82%; padding: 10px 14px; line-height: 1.5; font-size: 15px;
     white-space: pre-wrap; word-wrap: break-word;
@@ -53,22 +53,25 @@
   .msg.err { align-self: flex-start; background: rgba(255, 107, 107, 0.15); color: #ff9d9d; border-radius: 20px 20px 20px 4px; }
   .msg a { color: #9ADFFF; text-decoration: underline; }
   .msg.user a { color: #fff; }
-  .inputbar { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
+  .inputbar { display: flex; gap: 8px; align-items: flex-end; padding-top: 4px; flex-shrink: 0; }
   #q {
-    flex: 1; padding: 12px 16px; border-radius: 24px; font-size: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.16); outline: none;
+    flex: 1; padding: 12px 16px; border-radius: 24px; font-size: 15px; line-height: 1.4;
+    border: 1px solid rgba(255, 255, 255, 0.16); outline: none; resize: none;
     background: rgba(255, 255, 255, 0.10); color: #EADCC8;
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    max-height: 120px; overflow-y: auto; scrollbar-width: none;
   }
+  #q::-webkit-scrollbar { display: none; }
   #q::placeholder { color: #7FB3B8; }
   #send {
     width: 44px; height: 44px; flex-shrink: 0; border: none; border-radius: 50%;
     background: #00c896; color: #0A0F14; font-size: 20px; font-weight: bold; cursor: pointer;
   }
+  #send:disabled { opacity: 0.5; cursor: default; }
   /* Desktop: the 480px phone card looks lost on a wide screen, so widen + center it. */
   @media (min-width: 768px) {
     body { padding: 24px; }
-    .phone { max-width: 760px; min-height: calc(100dvh - 48px); padding: 18px; }
+    .phone { max-width: 760px; height: calc(100dvh - 48px); padding: 18px; }
     .msg { font-size: 16px; }
   }
 </style>
@@ -88,7 +91,7 @@
   <div id="chat"></div>
 
   <div class="inputbar">
-    <input id="q" placeholder="Message..." autocomplete="off">
+    <textarea id="q" placeholder="Message..." autocomplete="off" rows="1"></textarea>
     <button id="send" aria-label="Send">↑</button>
   </div>
 </div>
@@ -101,6 +104,11 @@
   // If config.js is missing, KEY stays empty and the chat shows the generic error.
   const KEY = (typeof API_KEY !== "undefined") ? API_KEY : "";
   const MODEL_LIST = (typeof MODELS !== "undefined" && MODELS.length) ? MODELS : ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen3.8-27b"];
+
+  // Conversation history: the model only remembers what we send it.
+  // Keep the last turns so follow-ups ("already ticket", "that rank") make sense.
+  // Page reload clears it — this test has no server-side session.
+  const history = [];
 
   // Escape HTML first, then turn bare https:// URLs into clickable links.
   function renderText(text) {
@@ -129,7 +137,8 @@
   async function ask(question) {
     if (!KEY) { addMsg(GENERIC_ERR, "err"); return; }
     addMsg(question, "user");
-    const thinking = addMsg("Haven is thinking…", "bot");
+    const sendBtn = document.getElementById("send");
+    sendBtn.disabled = true; qEl.disabled = true;
     try {
       // Try models in order. Switch ONLY on 429 (limit ended) — never on other errors,
       // and never when the answer is DON'T_KNOW (same brain, another model won't know either).
@@ -144,6 +153,7 @@
             model: MODEL_LIST[i],
             messages: [
               { role: "system", content: buildSystemPrompt() },
+              ...history.slice(-12),
               { role: "user", content: question },
             ],
             temperature: 0.3,
@@ -154,19 +164,27 @@
         if (res.status !== 429) break;
         if (i === MODEL_LIST.length - 1) allRateLimited = true;
       }
-      thinking.remove();
+      let displayText, displayCls;
       if (answer === null) {
-        addMsg(allRateLimited ? BUSY[detectLanguage(question)] : GENERIC_ERR, allRateLimited ? "bot" : "err");
-        return;
-      }
-      if (answer === "DON'T_KNOW") {
-        addMsg(FALLBACK[detectLanguage(question)], "bot");
+        displayText = allRateLimited ? BUSY[detectLanguage(question)] : GENERIC_ERR;
+        displayCls = allRateLimited ? "bot" : "err";
+      } else if (answer.includes("DON'T_KNOW")) {
+        // Robust: the model sometimes writes "(DON'T_KNOW)" inside a longer reply
+        // instead of returning it alone — never let the token itself reach the visitor.
+        displayText = FALLBACK[detectLanguage(question)];
+        displayCls = "bot";
       } else {
-        addMsg(answer, "bot");
+        displayText = answer;
+        displayCls = "bot";
+      }
+      addMsg(displayText, displayCls);
+      if (displayCls === "bot") {
+        history.push({ role: "user", content: question }, { role: "assistant", content: displayText });
       }
     } catch (e) {
-      thinking.remove();
       addMsg(GENERIC_ERR, "err");
+    } finally {
+      sendBtn.disabled = false; qEl.disabled = false; qEl.focus();
     }
   }
 
@@ -174,9 +192,13 @@
     const v = qEl.value.trim();
     if (!v) return;
     qEl.value = "";
+    autoResize();
     ask(v);
   });
-  qEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("send").click(); });
+  // Enter sends, Shift+Enter adds a new line.
+  qEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("send").click(); }
+  });
 </script>
 </body>
 </html>

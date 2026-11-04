@@ -119,7 +119,9 @@ client.on("messageCreate", async (message) => {
     }
 
     // --- AI doesn't know → graceful message + staff mention ---
-    if (raw === "DON'T_KNOW") {
+    // Robust: the model sometimes writes "(DON'T_KNOW)" inside a longer reply
+    // instead of returning it alone — never let the token itself reach the visitor.
+    if (raw.includes("DON'T_KNOW")) {
       let reply = FALLBACK[detectLanguage(question)];
       const lastMention = lastMentionAt.get(message.channel.id) || 0;
       if (STAFF_ROLE_ID && now - lastMention >= MENTION_COOLDOWN_MS) {
