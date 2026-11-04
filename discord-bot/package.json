@@ -1,0 +1,1 @@
+{"dependencies":{"discord.js":"^14.0.0","dotenv":"^16.0.0"},"description":"HavenCraft AI chatbot — Discord test bot (uses ../brain.js)","engines":{"node":">=18"},"main":"bot.js","name":"havencraft-chatbot-discord-test","private":true,"scripts":{"start":"node bot.js"},"type":"commonjs","version":"0.1.0"}

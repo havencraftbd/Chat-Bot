@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HavenCraft Chatbot — Test</title>
+<script src="brain.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0A0F14; color: #EADCC8; max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { color: #00c896; font-size: 22px; }
+  .small { color: #7FB3B8; font-size: 13px; }
+  #setup { background: #12262B; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  #setup input, #setup select { width: 100%; padding: 8px; margin: 6px 0; border-radius: 8px; border: 1px solid #0F3D3E; background: #0A0F14; color: #EADCC8; box-sizing: border-box; }
+  #chat { background: #12262B; border-radius: 12px; padding: 12px; min-height: 300px; margin-bottom: 12px; }
+  .msg { margin: 8px 0; line-height: 1.5; white-space: pre-wrap; }
+  .user { color: #ff8a00; }
+  .bot { color: #EADCC8; }
+  .err { color: #ff6b6b; }
+  #row { display: flex; gap: 8px; }
+  #q { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #0F3D3E; background: #12262B; color: #EADCC8; }
+  button { padding: 10px 18px; border: none; border-radius: 8px; background: #00c896; color: #0A0F14; font-weight: bold; cursor: pointer; }
+  .chip { display: inline-block; background: #0F3D3E; border-radius: 20px; padding: 6px 12px; margin: 4px 4px 0 0; cursor: pointer; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>HavenCraft Chatbot — Test</h1>
+<p class="small">Brain version: <span id="ver">?</span> · Key শুধু তোমার browser-এ থাকে, এই file-এ না।</p>
+
+<div id="setup">
+  <label>Groq API Key</label>
+  <input id="key" type="password" placeholder="gsk_..." autocomplete="off">
+  <label>Model</label>
+  <select id="model">
+    <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (default)</option>
+    <option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
+    <option value="qwen3.8-27b">qwen3.8-27b</option>
+  </select>
+</div>
+
+<div id="chat"></div>
+
+<div>
+  <span class="chip" data-q="Java IP কী?">Java IP কী?</span>
+  <span class="chip" data-q="Bedrock দিয়ে কীভাবে join করবো?">Bedrock join</span>
+  <span class="chip" data-q="Elite rank-এর দাম কত?">Elite rank দাম</span>
+  <span class="chip" data-q="Pig spawner-এর দাম কত?">Pig spawner দাম</span>
+  <span class="chip" data-q="server-এর নিয়ম কী?">নিয়ম কী? (জানি না test)</span>
+</div>
+
+<div id="row" style="margin-top:12px">
+  <input id="q" placeholder="প্রশ্ন লিখো..." autocomplete="off">
+  <button id="send">Send</button>
+</div>
+
+<script>
+  const keyEl = document.getElementById("key");
+  const modelEl = document.getElementById("model");
+  const chatEl = document.getElementById("chat");
+  const qEl = document.getElementById("q");
+  document.getElementById("ver").textContent = (window.BRAIN && BRAIN.version) || "brain.js load হয়নি";
+
+  keyEl.value = localStorage.getItem("hc_chatbot_key") || "";
+  keyEl.addEventListener("input", () => localStorage.setItem("hc_chatbot_key", keyEl.value.trim()));
+
+  function addMsg(text, cls) {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.textContent = text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  async function ask(question) {
+    const key = keyEl.value.trim();
+    if (!key) { addMsg("আগে Groq API Key বসাও।", "err"); return; }
+    addMsg("তুমি: " + question, "user");
+    addMsg("Haven ভাবছে...", "bot");
+    const thinking = chatEl.lastChild;
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+        body: JSON.stringify({
+          model: modelEl.value,
+          messages: [
+            { role: "system", content: buildSystemPrompt() },
+            { role: "user", content: question },
+          ],
+          temperature: 0.3,
+        }),
+      });
+      const data = await res.json();
+      thinking.remove();
+      if (!res.ok) {
+        addMsg("Error: " + (data.error && data.error.message ? data.error.message : res.status), "err");
+        return;
+      }
+      addMsg("Haven: " + data.choices[0].message.content, "bot");
+    } catch (e) {
+      thinking.remove();
+      addMsg("Network error: " + e.message, "err");
+    }
+  }
+
+  document.getElementById("send").addEventListener("click", () => {
+    const v = qEl.value.trim();
+    if (!v) return;
+    qEl.value = "";
+    ask(v);
+  });
+  qEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("send").click(); });
+  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => ask(c.dataset.q)));
+</script>
+</body>
+</html>
