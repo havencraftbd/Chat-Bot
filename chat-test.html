@@ -95,7 +95,12 @@
         addMsg("Error: " + (data.error && data.error.message ? data.error.message : res.status), "err");
         return;
       }
-      addMsg("Haven: " + data.choices[0].message.content, "bot");
+      const raw = data.choices[0].message.content || "";
+      if (raw.trim() === "DON'T_KNOW") {
+        addMsg("Haven: " + FALLBACK[detectLanguage(question)], "bot");
+      } else {
+        addMsg("Haven: " + raw, "bot");
+      }
     } catch (e) {
       thinking.remove();
       addMsg("Network error: " + e.message, "err");

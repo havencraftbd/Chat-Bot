@@ -25,6 +25,12 @@ AI chatbot-এর test setup: একটাই brain, দুইটা test surfac
    - `node bot.js`
 4. Test server-এ bot-কে mention করে প্রশ্ন করো। Bot শুধু mention-এ reply দেয়, তাই spam হবে না।
 
+## AI না পারলে + on/off
+
+- **AI উত্তর না জানলে:** model `DON'T_KNOW` signal দেয় → bot graceful message পাঠায় + `.env`-এর `STAFF_ROLE_ID` role-কে mention করে (প্রশ্নসহ, যাতে staff বোঝে কী জানতে চাওয়া হয়েছিল)। একই channel-এ 5 মিনিটের মধ্যে আবার mention হবে না (spam ঠেকাতে)।
+- **Staff role-এর ID:** Server Settings → Roles → role-এ right-click → Copy ID (Discord-এ Developer Mode on থাকতে হবে) → `.env`-এ `STAFF_ROLE_ID`-এ বসাও। Role-এর "Allow anyone to mention this role" on রাখো, নইলে mention ping যাবে না (অথবা bot-কে Mention Everyone permission দাও)।
+- **On/off (শুধু staff):** `@Haven off` → bot চুপ হয়ে যাবে, staff নিজে reply দেবে। `@Haven on` → bot আবার on। Off/on state memory-তে থাকে — bot restart হলে আবার ON হয়ে যাবে।
+
 ## Brain edit করা
 
 - শুধু `brain.js` edit করো — HTML test আর Discord bot দুইজনেই ওটা ব্যবহার করে।
